@@ -1,6 +1,6 @@
 {
   "name": "payload-ai-image",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Payload CMS plugin — AI image generation with context-aware prompt optimization",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,7 +17,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "node -e \"try{require('fs').rmSync('node_modules/payload',{recursive:true,force:true})}catch(e){}\""
   },
   "peerDependencies": {
     "next": "^15.0.0",

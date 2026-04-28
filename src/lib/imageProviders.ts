@@ -10,12 +10,12 @@ const FAL_IMAGE_SIZES: Record<ImageAspectRatio, string> = {
   '9:16': 'portrait_16_9',
 }
 
-const OPENAI_SIZES: Record<ImageAspectRatio, '1024x1024' | '1792x1024' | '1024x1792'> = {
+const OPENAI_SIZES: Record<ImageAspectRatio, '1024x1024' | '1536x1024' | '1024x1536'> = {
   '1:1': '1024x1024',
-  '16:9': '1792x1024',
-  '4:3': '1792x1024',
-  '3:2': '1792x1024',
-  '9:16': '1024x1792',
+  '16:9': '1536x1024',
+  '4:3': '1536x1024',
+  '3:2': '1536x1024',
+  '9:16': '1024x1536',
 }
 
 // ─── Fal.ai — Flux Pro ────────────────────────────────────────────────────
@@ -89,7 +89,6 @@ async function generateWithOpenAI(req: GenerateImageRequest): Promise<GenerateIm
       n: 1,
       size: OPENAI_SIZES[req.aspectRatio],
       quality: 'high',
-      output_format: 'url',
     }),
   })
 
@@ -99,12 +98,17 @@ async function generateWithOpenAI(req: GenerateImageRequest): Promise<GenerateIm
   }
 
   const data = await res.json() as {
-    data: { url: string; revised_prompt?: string }[]
+    data: { b64_json?: string; url?: string; revised_prompt?: string }[]
   }
 
+  const item = data.data[0]
+
+  // gpt-image-1 returns base64 — convert to data URL for display
+  const imageUrl = item.url ?? `data:image/png;base64,${item.b64_json}`
+
   return {
-    imageUrl: data.data[0].url,
-    revisedPrompt: data.data[0].revised_prompt,
+    imageUrl,
+    revisedPrompt: item.revised_prompt,
   }
 }
 

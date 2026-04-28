@@ -4,8 +4,8 @@ import React, { useState, useCallback, useRef } from 'react'
 import type { ImageAspectRatio } from '../types.js'
 
 interface AiImageButtonProps {
-  /** Called when user approves a generated image — receives the remote URL */
-  onApprove: (imageUrl: string, prompt: string) => void
+  /** Called when user approves a generated image — receives the image URL/base64 */
+  onApprove: (imageUrl: string, prompt: string) => void | Promise<void>
   /** Aspect ratio options to show */
   aspectRatios?: ImageAspectRatio[]
   /** Default aspect ratio */
@@ -110,10 +110,15 @@ export function AiImageButton({
     generate(revisionPrompt)
   }, [revisionPrompt, revisionCount, maxRevisions, generate])
 
-  const handleApprove = useCallback(() => {
+  const handleApprove = useCallback(async () => {
     if (!result) return
-    onApprove(result.imageUrl, result.optimizedPrompt)
-    close()
+    setStep('generating') // reuse spinner for upload
+    try {
+      await onApprove(result.imageUrl, result.optimizedPrompt)
+      close()
+    } catch {
+      setStep('review')
+    }
   }, [result, onApprove, close])
 
   if (!isOpen) {

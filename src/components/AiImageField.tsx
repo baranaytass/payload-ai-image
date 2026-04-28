@@ -5,7 +5,6 @@ import { AiImageButton } from './AiImageButton.js'
 import type { ImageAspectRatio } from '../types.js'
 
 interface AiImageFieldProps {
-  /** Payload's useField hook — injected by the custom field component */
   field: {
     setValue: (value: unknown) => void
     value: unknown
@@ -15,11 +14,42 @@ interface AiImageFieldProps {
   maxRevisions?: number
 }
 
-/**
- * Wraps the AiImageButton and connects it to a Payload upload field via setValue.
- * When the user approves a generated image, the remote URL is set as the field value.
- * The Media collection's beforeChange hook will download and store the image.
- */
+async function uploadGeneratedImage(imageUrl: string, prompt: string): Promise<string> {
+  let blob: Blob
+
+  if (imageUrl.startsWith('data:')) {
+    // base64 → Blob
+    const [header, b64] = imageUrl.split(',')
+    const mime = header.match(/:(.*?);/)?.[1] ?? 'image/png'
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+    blob = new Blob([bytes], { type: mime })
+  } else {
+    // Remote URL → fetch → Blob
+    const res = await fetch(imageUrl)
+    blob = await res.blob()
+  }
+
+  const filename = `ai-generated-${Date.now()}.png`
+  const formData = new FormData()
+  formData.append('file', blob, filename)
+  formData.append('alt', prompt.slice(0, 100))
+
+  const uploadRes = await fetch('/api/media', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text()
+    throw new Error(`Upload failed: ${uploadRes.status} — ${err}`)
+  }
+
+  const result = await uploadRes.json() as { doc?: { id: string } }
+  const id = result.doc?.id
+  if (!id) throw new Error('Upload succeeded but no document ID returned')
+  return id
+}
+
 export function AiImageField({
   field,
   defaultAspectRatio,
@@ -27,9 +57,14 @@ export function AiImageField({
   maxRevisions,
 }: AiImageFieldProps) {
   const handleApprove = useCallback(
-    (imageUrl: string, _prompt: string) => {
-      // Set the remote URL — Payload's upload system will handle the rest
-      field.setValue(imageUrl)
+    async (imageUrl: string, prompt: string) => {
+      try {
+        const id = await uploadGeneratedImage(imageUrl, prompt)
+        field.setValue(id)
+      } catch (err) {
+        console.error('[payload-ai-image] upload error:', err)
+        alert('Görsel yüklenirken hata oluştu: ' + (err instanceof Error ? err.message : String(err)))
+      }
     },
     [field],
   )
