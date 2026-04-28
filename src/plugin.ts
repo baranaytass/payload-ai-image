@@ -26,7 +26,10 @@ import { createGenerateHandler, createOptimizeHandler } from './api/generateHand
 export function aiImagePlugin(pluginConfig: AiImagePluginConfig) {
   return (incomingConfig: Config): Config => {
     const targetCollections = pluginConfig.collections ?? ['media']
+    // Payload strips the /api prefix automatically — endpoints are registered without it
+    // but the client still calls /api/ai-image/... via the Next.js route handler
     const apiBasePath = '/api/ai-image'
+    const endpointBasePath = '/ai-image'
     const defaultAspectRatio = pluginConfig.defaultAspectRatio ?? '16:9'
     const maxRevisions = pluginConfig.maxRevisions ?? 5
 
@@ -39,12 +42,12 @@ export function aiImagePlugin(pluginConfig: AiImagePluginConfig) {
     const newEndpoints: NonNullable<Config['endpoints']> = [
       ...existingEndpoints,
       {
-        path: `${apiBasePath}/generate`,
+        path: `${endpointBasePath}/generate`,
         method: 'post',
         handler: generateHandler,
       },
       {
-        path: `${apiBasePath}/optimize`,
+        path: `${endpointBasePath}/optimize`,
         method: 'post',
         handler: optimizeHandler,
       },
